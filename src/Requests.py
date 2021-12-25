@@ -8,10 +8,14 @@ import argparse
 class CloudFlareRequests:
     def __init__(self, cli_args) -> None:
         config = dotenv_values(cli_args["config"])
-        self.API_KEY = cli_args["apikey"] if cli_args["apikey"] is not None else config["API_KEY"]
+        self.API_KEY = (
+            cli_args["apikey"] if cli_args["apikey"] is not None else config["API_KEY"]
+        )
         self.ZONE = cli_args["zone"] if cli_args["zone"] is not None else config["ZONE"]
-        self.DEFAULT_HEADERS = {"Authorization": f"Bearer {self.API_KEY}",
-                                "Content-Type": "application/json"}
+        self.DEFAULT_HEADERS = {
+            "Authorization": f"Bearer {self.API_KEY}",
+            "Content-Type": "application/json",
+        }
 
     def __repr__(self) -> str:
         return f"CloudFlareRequests{self.API_KEY, self.ZONE}"
@@ -22,9 +26,7 @@ class CloudFlareRequests:
     def getDNSRecords(self, filterType: str = None, per_page: int = 3) -> List[Dict]:
         res = []
 
-        headers = {
-            **self.DEFAULT_HEADERS
-        }
+        headers = {**self.DEFAULT_HEADERS}
 
         page: int = 1
         per_page: int = per_page
@@ -36,8 +38,7 @@ class CloudFlareRequests:
             if filterType is not None:
                 url += f"&type={filterType}"
 
-            r = requests.get(
-                url=url, headers=headers)
+            r = requests.get(url=url, headers=headers)
 
             request_json = r.json()
 
@@ -62,22 +63,23 @@ class CloudFlareRequests:
                 "name": record["name"],
                 "content": ip,
                 "ttl": "1",
-                "proxied": record["proxied"]
+                "proxied": record["proxied"],
             }
 
             r = requests.put(url=url, headers=headers, data=json.dumps(data))
 
-            print(r.json())
+
+#            print(r.json())
 
 
 def getIPAddress() -> str:
-    ip = requests.get('https://api.ipify.org').text
+    ip = requests.get("https://api.ipify.org").text
     return ip
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="CLourdFlare API to Update IP Address for Records"
+        description="CloudFlare API to Update IP Address for Records"
     )
 
     parser.add_argument(
@@ -86,15 +88,12 @@ def main():
         dest="config",
         type=str,
         help="The File Path to the .dotenv Config File",
-        required=True)
+        required=True,
+    )
 
     parser.add_argument(
-        "-z",
-        "--zone",
-        dest="zone",
-        type=str,
-        help="The Zone to update",
-        required=False)
+        "-z", "--zone", dest="zone", type=str, help="The Zone to update", required=False
+    )
 
     parser.add_argument(
         "-a",
@@ -102,7 +101,8 @@ def main():
         dest="apikey",
         type=str,
         help="The API Key to use",
-        required=False)
+        required=False,
+    )
 
     args = vars(parser.parse_args())
 
