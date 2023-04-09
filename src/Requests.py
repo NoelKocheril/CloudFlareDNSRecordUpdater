@@ -8,10 +8,13 @@ import argparse
 class CloudFlareRequests:
     def __init__(self, cli_args) -> None:
         config = dotenv_values(cli_args["config"])
-        self.API_KEY = (
-            cli_args["apikey"] if cli_args["apikey"] is not None else config["API_KEY"]
-        )
+        self.API_KEY = cli_args["apikey"] if cli_args["apikey"] is not None else config["API_KEY"]
         self.ZONE = cli_args["zone"] if cli_args["zone"] is not None else config["ZONE"]
+        self.IGNORED_SUBDOMAIN = cli_args["IGNORED_SUBDOMAIN"] if cli_args["IGNORED_SUBDOMAIN"] is not None else config["IGNORED_SUBDOMAIN"]
+        self.IGNORED_SUBDOMAIN_SET = set()
+        self.parseIgnoredSubdomains()
+        
+        
         self.DEFAULT_HEADERS = {
             "Authorization": f"Bearer {self.API_KEY}",
             "Content-Type": "application/json",
@@ -23,7 +26,10 @@ class CloudFlareRequests:
     def __str__(self) -> str:
         return f"API Key: {self.API_KEY}\nZone: {self.ZONE}"
 
-    def getDNSRecords(self, filterType: str = None, per_page: int = 3) -> List[Dict]:
+    def parseIgnoredSubdomains(self)  -> None:
+        self.IGNORED_SUBDOMAIN_SET = set(filter(None, self.IGNORED_SUBDOMAIN.lower().split(";")))
+
+    def getDNSRecords(self, filterType: str = None, per_page: int = 1) -> List[Dict]:
         res = []
 
         headers = {**self.DEFAULT_HEADERS}
@@ -41,8 +47,13 @@ class CloudFlareRequests:
             r = requests.get(url=url, headers=headers)
 
             request_json = r.json()
-
-            res.extend(request_json["result"])
+            
+            if(len(request_json["result"]) <= 0):
+                pass;
+            elif (request_json["result"][0]["name"].lower() in self.IGNORED_SUBDOMAIN_SET):
+                print("Ignoring: " + request_json["result"][0]["name"])
+            else:
+                res.extend(request_json["result"])
 
             if request_json["result_info"]["count"] < per_page:
                 break
@@ -76,7 +87,6 @@ def getIPAddress() -> str:
     ip = requests.get("https://api.ipify.org").text
     return ip
 
-
 def main():
     parser = argparse.ArgumentParser(
         description="CloudFlare API to Update IP Address for Records"
@@ -103,6 +113,15 @@ def main():
         help="The API Key to use",
         required=False,
     )
+    
+    parser.add_argument(
+        "-i",
+        "--IGNORED_SUBDOMAIN",
+        dest="IGNORED_SUBDOMAIN",
+        type=str,
+        help="The Subdomains to ignore",
+        required=False,
+    )
 
     args = vars(parser.parse_args())
 
@@ -114,3 +133,4 @@ def main():
 
 if __name__ in ("__main__"):
     main()
+
